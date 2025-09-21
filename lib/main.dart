@@ -147,8 +147,13 @@ class _ExpenseInputScreenState extends State<ExpenseInputScreen> {
   String _selectedCategory = 'Food';
   String _selectedCurrency = 'JPY';
 
-  final List<String> _categories = ['Food', 'Transport', 'Entertainment', 'Other'];
-  final List<String> _currencies = ['JPY', 'AUD'];
+  // Move _categoryIcons to the class level for proper scope
+  final Map<String, IconData> _categoryIcons = {
+    'Food': Icons.fastfood,
+    'Transport': Icons.directions_car,
+    'Entertainment': Icons.movie,
+    'Other': Icons.category,
+  };
 
   // Show a success popup when an expense is added
   void _submitData() {
@@ -243,42 +248,121 @@ class _ExpenseInputScreenState extends State<ExpenseInputScreen> {
                 keyboardType: TextInputType.number,
               ),
               SizedBox(height: 10),
-              DropdownButtonFormField(
-                value: _selectedCategory,
-                items: _categories.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
+              // Replace the DropdownButtonFormField for category selection with an icon-based selection
+
+              // Add a row of selectable icons for categories
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: _categoryIcons.entries.map((entry) {
+                  final category = entry.key;
+                  final icon = entry.value;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = category;
+                      });
+                    },
+                    child: Container(
+                      width: 70, // ボタンの幅を広げる
+                      height: 70, // ボタンの高さを広げる
+                      decoration: BoxDecoration(
+                        color: _selectedCategory == category ? Colors.indigo.shade100 : Colors.grey.shade200,
+                        border: Border.all(
+                          color: _selectedCategory == category ? Colors.indigo : Colors.grey,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            icon,
+                            color: _selectedCategory == category ? Colors.indigo : Colors.grey,
+                            size: 40, // アイコンを少し小さく
+                          ),
+                          Positioned(
+                            bottom: 2, // 文字の位置を少し上に移動
+                            child: Text(
+                              category,
+                              style: TextStyle(
+                                fontSize: 8, // 文字サイズはそのまま
+                                color: _selectedCategory == category ? Colors.indigo : Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   );
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategory = value as String;
-                  });
-                },
-                decoration: InputDecoration(labelText: 'Category'),
               ),
               SizedBox(height: 10),
-              DropdownButtonFormField(
-                value: _selectedCurrency,
-                items: _currencies.map((currency) {
-                  return DropdownMenuItem(
-                    value: currency,
-                    child: Text(currency),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCurrency = value as String;
-                  });
-                },
-                decoration: InputDecoration(labelText: 'Currency'),
+              // Replace the DropdownButtonFormField for currency selection with buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCurrency = 'JPY';
+                        });
+                      },
+                      child: Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: _selectedCurrency == 'JPY' ? Colors.indigo.shade100 : Colors.grey.shade200,
+                          border: Border.all(
+                            color: _selectedCurrency == 'JPY' ? Colors.indigo : Colors.grey,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'JPY',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: _selectedCurrency == 'JPY' ? Colors.indigo : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCurrency = 'AUD';
+                        });
+                      },
+                      child: Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: _selectedCurrency == 'AUD' ? Colors.indigo.shade100 : Colors.grey.shade200,
+                          border: Border.all(
+                            color: _selectedCurrency == 'AUD' ? Colors.indigo : Colors.grey,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'AUD',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: _selectedCurrency == 'AUD' ? Colors.indigo : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 10),
               TextField(
                 controller: _noteController,
                 decoration: InputDecoration(labelText: 'Note (Optional)'),
-                maxLines: 3,
+                maxLines: 1, // 一行に変更
               ),
               SizedBox(height: 10),
               Row(
@@ -287,8 +371,12 @@ class _ExpenseInputScreenState extends State<ExpenseInputScreen> {
                     child: Text(
                       _selectedDate == null
                           ? 'No date selected'
-                          : 'Selected date: ${_selectedDate!.toLocal()}'.split(' ')[0],
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          : 'Selected date: ${DateFormat('yyyy-MM-dd').format(_selectedDate!)}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo,
+                      ),
                     ),
                   ),
                   TextButton(
@@ -422,18 +510,24 @@ class _ExpenseSummaryScreenState extends State<ExpenseSummaryScreen> with Single
       final response = await http.get(Uri.parse('https://api.exchangerate-api.com/v4/latest/JPY'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setState(() {
-          data['rates'].forEach((key, value) {
-            if (value != null) {
-              _exchangeRates[key] = (value is int) ? value.toDouble() : value;
+        if (mounted) {
+          setState(() {
+            _exchangeRates.clear();
+            _exchangeRates['JPY'] = 1.0; // Base currency
+            if (data['rates']['AUD'] != null) {
+              _exchangeRates['AUD'] = (data['rates']['AUD'] is int)
+                  ? (data['rates']['AUD'] as int).toDouble()
+                  : data['rates']['AUD'];
             }
           });
-        });
+        }
       } else {
         print('Failed to fetch exchange rates: ${response.statusCode}');
       }
     } catch (error) {
-      print('Error fetching exchange rates: $error');
+      if (mounted) {
+        print('Error fetching exchange rates: $error');
+      }
     }
   }
 
@@ -624,13 +718,15 @@ class _HomeTabState extends State<HomeTab> {
       final response = await http.get(Uri.parse('https://api.exchangerate-api.com/v4/latest/$_selectedCurrency'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setState(() {
-          data['rates'].forEach((key, value) {
-            if (value != null) {
-              _exchangeRates[key] = (value is int) ? value.toDouble() : value;
-            }
+        if (mounted) {
+          setState(() {
+            data['rates'].forEach((key, value) {
+              if (value != null) {
+                _exchangeRates[key] = (value is int) ? value.toDouble() : value;
+              }
+            });
           });
-        });
+        }
       } else {
         print('Failed to fetch exchange rates: ${response.statusCode}');
       }
@@ -644,10 +740,10 @@ class _HomeTabState extends State<HomeTab> {
     final monthlyTotal = widget.expenses.fold(0.0, (sum, expense) {
       if (_selectedCurrency == 'AUD' && expense.currency == 'JPY') {
         // Convert JPY to AUD
-        return sum + (expense.amount / _exchangeRates['AUD']!);
+        return sum + (expense.amount * _exchangeRates['AUD']!);
       } else if (_selectedCurrency == 'JPY' && expense.currency == 'AUD') {
         // Convert AUD to JPY
-        return sum + (expense.amount * _exchangeRates['AUD']!);
+        return sum + (expense.amount / _exchangeRates['AUD']!);
       } else {
         // No conversion needed
         return sum + expense.amount;
@@ -662,10 +758,10 @@ class _HomeTabState extends State<HomeTab> {
         .fold(0.0, (sum, expense) {
       if (_selectedCurrency == 'AUD' && expense.currency == 'JPY') {
         // Convert JPY to AUD
-        return sum + (expense.amount / _exchangeRates['AUD']!);
+        return sum + (expense.amount * _exchangeRates['AUD']!);
       } else if (_selectedCurrency == 'JPY' && expense.currency == 'AUD') {
         // Convert AUD to JPY
-        return sum + (expense.amount * _exchangeRates['AUD']!);
+        return sum + (expense.amount / _exchangeRates['AUD']!);
       } else {
         // No conversion needed
         return sum + expense.amount;
@@ -707,19 +803,65 @@ class _HomeTabState extends State<HomeTab> {
           ),
         ),
         SizedBox(height: 20),
-        DropdownButton<String>(
-          value: _selectedCurrency,
-          items: _exchangeRates.keys.map((currency) {
-            return DropdownMenuItem(
-              value: currency,
-              child: Text(currency),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedCurrency = value!;
-            });
-          },
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedCurrency = 'JPY';
+                  });
+                },
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: _selectedCurrency == 'JPY' ? Colors.indigo.shade100 : Colors.grey.shade200,
+                    border: Border.all(
+                      color: _selectedCurrency == 'JPY' ? Colors.indigo : Colors.grey,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'JPY',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: _selectedCurrency == 'JPY' ? Colors.indigo : Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedCurrency = 'AUD';
+                  });
+                },
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: _selectedCurrency == 'AUD' ? Colors.indigo.shade100 : Colors.grey.shade200,
+                    border: Border.all(
+                      color: _selectedCurrency == 'AUD' ? Colors.indigo : Colors.grey,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'AUD',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: _selectedCurrency == 'AUD' ? Colors.indigo : Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         SizedBox(height: 20),
         Card(
