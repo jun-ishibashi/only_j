@@ -122,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Home',
@@ -150,8 +150,8 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedFontSize: 14,
         selectedIconTheme: IconThemeData(size: 30),
         unselectedIconTheme: IconThemeData(size: 24),
-      ),
-    );
+      ), // Closing the BottomNavigationBar
+    ); // Closing the Scaffold
   }
 }
 
@@ -174,10 +174,13 @@ class _ExpenseInputScreenState extends State<ExpenseInputScreen> {
 
   // Move _categoryIcons to the class level for proper scope
   final Map<String, IconData> _categoryIcons = {
-    'Food': Icons.fastfood,
+    'Grocery Shopping': Icons.shopping_cart,
+    'Dining Out': Icons.restaurant,
+    'Tobacco': Icons.smoking_rooms,
     'Transport': Icons.directions_car,
     'Entertainment': Icons.movie,
-    'Other': Icons.category,
+    'Rent': Icons.home,
+    'Daily Essentials': Icons.shopping_bag,
   };
 
   // Show a success popup when an expense is added
@@ -283,50 +286,54 @@ class _ExpenseInputScreenState extends State<ExpenseInputScreen> {
               // Replace the DropdownButtonFormField for category selection with an icon-based selection
 
               // Add a row of selectable icons for categories
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: _categoryIcons.entries.map((entry) {
-                  final category = entry.key;
-                  final icon = entry.value;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedCategory = category;
-                      });
-                    },
-                    child: Container(
-                      width: 70, // ボタンの幅を広げる
-                      height: 70, // ボタンの高さを広げる
-                      decoration: BoxDecoration(
-                        color: _selectedCategory == category ? Colors.indigo.shade100 : Colors.grey.shade200,
-                        border: Border.all(
-                          color: _selectedCategory == category ? Colors.indigo : Colors.grey,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Icon(
-                            icon,
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: _categoryIcons.entries.map((entry) {
+                    final category = entry.key;
+                    final icon = entry.value;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCategory = category;
+                        });
+                      },
+                      child: Container(
+                        width: 60, // Button width
+                        height: 60, // Button height
+                        margin: EdgeInsets.symmetric(horizontal: 8), // Add spacing between items
+                        decoration: BoxDecoration(
+                          color: _selectedCategory == category ? Colors.indigo.shade100 : Colors.grey.shade200,
+                          border: Border.all(
                             color: _selectedCategory == category ? Colors.indigo : Colors.grey,
-                            size: 40, // アイコンを少し小さく
                           ),
-                          Positioned(
-                            bottom: 2, // 文字の位置を少し上に移動
-                            child: Text(
-                              category,
-                              style: TextStyle(
-                                fontSize: 8, // 文字サイズはそのまま
-                                color: _selectedCategory == category ? Colors.indigo : Colors.grey,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Icon(
+                              icon,
+                              color: _selectedCategory == category ? Colors.indigo : Colors.grey,
+                              size: 30, // Icon size
+                            ),
+                            Positioned(
+                              bottom: 2, // Adjust text position
+                              child: Text(
+                                category,
+                                style: TextStyle(
+                                  fontSize: 7, // Text size
+                                  color: _selectedCategory == category ? Colors.indigo : Colors.grey,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
+                ),
               ),
               SizedBox(height: 10),
               // Replace the DropdownButtonFormField for currency selection with buttons
@@ -454,6 +461,11 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
     'Transport': Icons.directions_car,
     'Entertainment': Icons.movie,
     'Other': Icons.category,
+    'Grocery Shopping': Icons.shopping_cart,
+    'Tobacco': Icons.smoking_rooms,
+    'Dining Out': Icons.restaurant,
+    'Rent': Icons.home,
+    'Daily Essentials': Icons.shopping_bag,
   };
 
   final Map<String, Color> _categoryColors = {
@@ -839,117 +851,117 @@ class _HomeTabState extends State<HomeTab> {
                 'Track your expenses effortlessly',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.white70,
+                  color: Colors.white,
                 ),
                 textAlign: TextAlign.center,
               ),
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCurrency = 'JPY';
+                        });
+                      },
+                      child: Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: _selectedCurrency == 'JPY' ? Colors.indigo.shade100 : Colors.grey.shade200,
+                          border: Border.all(
+                            color: _selectedCurrency == 'JPY' ? Colors.indigo : Colors.grey,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'JPY',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: _selectedCurrency == 'JPY' ? Colors.indigo : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCurrency = 'AUD';
+                        });
+                      },
+                      child: Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: _selectedCurrency == 'AUD' ? Colors.indigo.shade100 : Colors.grey.shade200,
+                          border: Border.all(
+                            color: _selectedCurrency == 'AUD' ? Colors.indigo : Colors.grey,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'AUD',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: _selectedCurrency == 'AUD' ? Colors.indigo : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+              Card(
+                margin: EdgeInsets.symmetric(horizontal: 20),
+                elevation: 5,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Total Expenses This Month',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        '${_selectedCurrency} ${monthlyTotal.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 24,
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        'Today\'s Expenses',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        '${_selectedCurrency} ${dailyTotal.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 24,
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
-          ),
-        ),
-        SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedCurrency = 'JPY';
-                  });
-                },
-                child: Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: _selectedCurrency == 'JPY' ? Colors.indigo.shade100 : Colors.grey.shade200,
-                    border: Border.all(
-                      color: _selectedCurrency == 'JPY' ? Colors.indigo : Colors.grey,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'JPY',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: _selectedCurrency == 'JPY' ? Colors.indigo : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedCurrency = 'AUD';
-                  });
-                },
-                child: Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: _selectedCurrency == 'AUD' ? Colors.indigo.shade100 : Colors.grey.shade200,
-                    border: Border.all(
-                      color: _selectedCurrency == 'AUD' ? Colors.indigo : Colors.grey,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'AUD',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: _selectedCurrency == 'AUD' ? Colors.indigo : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 20),
-        Card(
-          margin: EdgeInsets.symmetric(horizontal: 20),
-          elevation: 5,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Text(
-                  'Total Expenses This Month',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  '${_selectedCurrency} ${monthlyTotal.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 24,
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Today\'s Expenses',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  '${_selectedCurrency} ${dailyTotal.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 24,
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ],
