@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:gsheets/gsheets.dart';
+import 'dart:io';
 
 void main() {
   runApp(MaterialApp(
@@ -50,8 +52,11 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Expense> _expenses = [];
   int _selectedIndex = 0;
   late List<Widget> _screens;
+  int _nextId = 1; // Initialize the ID counter
 
   void _addExpense(Expense expense) {
+    expense.id = _nextId.toString(); // Assign a unique incrementing ID as a string
+    _nextId++;
     _expenses.add(expense);
     print('Expense added: ${expense.toJson()}'); // デバッグログを追加
 
@@ -59,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _screens = [
         HomeTab(expenses: _expenses),
-        ExpenseListScreen(expenses: _expenses),
+        ExpenseListScreen(expenses: _expenses, onDeleteExpense: deleteExpense),
         ExpenseInputScreen(onAddExpense: _addExpense),
         ExpenseSummaryScreen(expenses: _expenses),
       ];
@@ -71,7 +76,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _screens = [
       HomeTab(expenses: _expenses),
-      ExpenseListScreen(expenses: _expenses),
+      ExpenseListScreen(
+        expenses: _expenses,
+        onDeleteExpense: deleteExpense, // Pass the deleteExpense method
+      ),
       ExpenseInputScreen(onAddExpense: _addExpense),
       ExpenseSummaryScreen(expenses: _expenses),
     ];
@@ -80,6 +88,23 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+  }
+
+  void deleteExpense(String expenseId) {
+    print('Attempting to delete expense with ID: $expenseId'); // Debugging statement
+    setState(() {
+      _expenses.removeWhere((expense) => expense.id == expenseId);
+      print('Updated expenses list:'); // Debugging statement
+      for (var expense in _expenses) {
+        print(expense.toJson()); // Debugging statement
+      }
+    });
+
+    markExpenseAsDeleted(expenseId).then((_) {
+      print('Expense marked as deleted in Google Sheets: $expenseId');
+    }).catchError((error) {
+      print('Failed to mark expense as deleted: $error');
     });
   }
 
@@ -211,6 +236,13 @@ class _ExpenseInputScreenState extends State<ExpenseInputScreen> {
 
     // Close the keyboard
     FocusScope.of(context).unfocus();
+
+    // Export to Google Sheets
+    exportExpenseToSheet(newExpense).then((_) {
+      print('Expense exported to Google Sheets: ${newExpense.toJson()}');
+    }).catchError((error) {
+      print('Failed to export expense: $error');
+    });
   }
 
   void _presentDatePicker() {
@@ -408,8 +440,9 @@ class _ExpenseInputScreenState extends State<ExpenseInputScreen> {
 
 class ExpenseListScreen extends StatefulWidget {
   final List<Expense> expenses;
+  final Function(String) onDeleteExpense; // Callback for deleting an expense
 
-  ExpenseListScreen({required this.expenses});
+  ExpenseListScreen({required this.expenses, required this.onDeleteExpense});
 
   @override
   _ExpenseListScreenState createState() => _ExpenseListScreenState();
@@ -461,16 +494,27 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                     subtitle: Text(
                       '${expense.date.toLocal()}'.split(' ')[0],
                     ),
-                    trailing: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('${expense.currency} ${expense.amount.toStringAsFixed(2)}'),
-                        if (expense.note.isNotEmpty)
-                          Text(
-                            expense.note,
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('${expense.currency} ${expense.amount.toStringAsFixed(2)}'),
+                            if (expense.note.isNotEmpty)
+                              Text(
+                                expense.note,
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            widget.onDeleteExpense(expense.id); // Use the callback
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -614,7 +658,7 @@ class _ExpenseSummaryScreenState extends State<ExpenseSummaryScreen> with Single
 
 // Expenseモデルの定義
 class Expense {
-  final String id; // 一意の識別子
+  String id; // 一意の識別子
   final String title; // 支出のタイトル
   final String category; // カテゴリ
   final double amount; // 支出額
@@ -910,5 +954,48 @@ class _HomeTabState extends State<HomeTab> {
         ),
       ],
     );
+  }
+}
+
+// Google Sheets export functionality
+const _spreadsheetId = '1ZUBYXFaYWfLv7j2sYNs41cVd9lJTjzlY1fATGItBqGM';
+
+Future<void> exportExpenseToSheet(Expense expense) async {
+  final credentials = Platform.environment['GOOGLE_CLOUD_CREDENTIALS'];
+  if (credentials == null) {
+    throw Exception('Google Cloud credentials not found in environment variables.');
+  }
+
+  final gsheets = GSheets(credentials);
+  final spreadsheet = await gsheets.spreadsheet(_spreadsheetId);
+  final sheet = spreadsheet.sheets.first;
+
+  await sheet.values.appendRow([
+    expense.id, // Unique ID of the expense
+    expense.date.toIso8601String(), // Date of the expense
+    expense.currency, // Currency of the expense
+    expense.amount, // Amount of the expense
+    expense.title, // Title of the expense
+    expense.category, // Category of the expense
+    'active', // Status of the expense (active by default)
+  ]);
+}
+
+Future<void> markExpenseAsDeleted(String expenseId) async {
+  final credentials = Platform.environment['GOOGLE_CLOUD_CREDENTIALS'];
+  if (credentials == null) {
+    throw Exception('Google Cloud credentials not found in environment variables.');
+  }
+
+  final gsheets = GSheets(credentials);
+  final spreadsheet = await gsheets.spreadsheet(_spreadsheetId);
+  final sheet = spreadsheet.sheets.first;
+
+  final rows = await sheet.values.allRows();
+  for (int i = 0; i < rows.length; i++) {
+    if (rows[i].isNotEmpty && rows[i][0] == expenseId) { // Search by ID in column A
+      await sheet.values.insertValue('deleted', column: 7, row: i + 1); // Mark as deleted in column G
+      break;
+    }
   }
 }
